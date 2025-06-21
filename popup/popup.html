@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Prompt Optimizer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Prompt Optimizer</h1>
+    <div class="api-key-container">
+      <label for="api-key">OpenAI API Key:</label>
+      <input type="password" id="api-key" placeholder="sk-...">
+      <button id="save-key">Save</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="color-box green"></div>
+        <span>90-100% (Excellent)</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box yellow"></div>
+        <span>80-89% (Good)</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box red"></div>
+        <span>0-79% (Needs improvement)</span>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
