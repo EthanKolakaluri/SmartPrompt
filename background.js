@@ -1,8 +1,7 @@
-// First, add tiktoken to your project: npm install tiktoken
-import { encoding_for_model } from 'tiktoken';
+import * as tiktoken from '@dqbd/tiktoken';
 
 // Configuration Constants
-const MODEL_CONFIG = {
+export const MODEL_CONFIG = {
   model: "gpt-4o",
   temperature: 0.4,
   max_tokens: 128000,
@@ -10,7 +9,7 @@ const MODEL_CONFIG = {
   maxOptimalTokenLen: 9820,
 };
 
-const PROMPT_TEMPLATES = {
+export const PROMPT_TEMPLATES = {
   regular: `Analyze and optimize this prompt by doing the following: 
 
         **1. Evaluation (JSON):**
@@ -92,39 +91,45 @@ const PROMPT_TEMPLATES = {
         }`
 };
 
-chrome.storage.sync.set({apiKey: "Replace this text with your API Key"});
+let encoding
 
-
-//INCLUDE FUNCTION TO SCAN CHATGPT URL HERE
-
-
-// Cache encoder instance
-let encoder;
-async function getEncoder() {
-  if (!encoder) {
-    encoder = encoding_for_model("gpt-4o");
+async function getEncoding() {
+  if (!encoding) {
+    try {
+        const wasmResponse = await fetch('https://tiktoken.pages.dev/tiktoken_bg.wasm');
+        encoding = await tiktoken.get_encoding('cl100k_base', {
+          wasm: new Uint8Array(await wasmResponse.arrayBuffer())
+        });
+    } catch (error) {
+      console.error("Failed to initialize tokenizer:", error);
+          throw new Error("Tokenizer initialization failed");
+    }
   }
-  return encoder;
+  return encoding; // Reuse this everywhere
 }
 
-// Add at module level:
-let encoderUsers = 0;
-
-// Add before any encoder usage:
-chrome.runtime.onSuspend.addListener(() => {
-  if (encoder) {
-    encoder.free();
-    encoder = null;
-    encoderUsers = 0;
-  }
-});
-
-function releaseEncoder() {
-    encoderUsers--;
-    if (encoderUsers === 0 && encoder) {
-      encoder.free();
-      encoder = null;
-    }
+async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
+  const userToken = await chrome.identity.getAuthToken({ interactive: true });
+  
+  const response = await fetch('https://your-backend.com/analyze-prompt', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${userToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      content, // Changed from 'prompt' for consistency
+      isChunked,
+      ...chunkInfo, // { isBegin, isEnd, chunkIndex, totalChunks, tokenLen}
+      modelConfig: MODEL_CONFIG,
+      template: isChunked 
+          ? PROMPT_TEMPLATES[chunkInfo.type || 'chunked'] 
+          : PROMPT_TEMPLATES.regular
+    })
+  });
+  
+  if (!response.ok) throw new Error(await response.text());
+  return validateUnifiedResponse(await response.json());
 }
 
 // Rate limiting
@@ -140,17 +145,11 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
 
   async function handlePromptAnalysis(request, sender, sendResponse) {
     const startTime = Date.now();
-    let tokenCount = 0;
 
     try {
-        const { apiKey } = await chrome.storage.sync.get('apiKey');
         const { prompt } = request;
 
-        if (!apiKey || !apiKey.startsWith('sk-') || apiKey.length < 32) {
-            throw new Error("Invalid API key format");
-        }
-
-        if (!prompt || prompt.trim().length === 0) {
+        if (!prompt?.trim()) {
           throw new Error("Prompt cannot be empty");
         }
 
@@ -163,71 +162,17 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
         RATE_LIMIT.set(senderId, Date.now());
 
         // Initialize tiktoken
-        const enc = await getEncoder();
-        encoderUsers++;
-        const tokens = enc.encode(prompt);
+        const encoder = await getEncoding();
+        const tokens = encoder.encode(prompt);
         const tokenCount = tokens.length;
 
         const MAX_TOKENS_SINGLE = maxOptimalTokenLen;
         const TOKEN_LIMIT = max_tokens-(0.0625 * max_tokens);
         const CHUNKS = Math.ceil(tokenCount/maxOptimalTokenLen);
-        const chunkedWords = Math.round(((maxOptimalTokenLen/CHUNKS)*4)/3);
 
         if (tokenCount >= TOKEN_LIMIT) {
             throw new Error(`Input exceeds ${TOKEN_LIMIT} token limit (has ${tokenCount} tokens)`);
         }
-
-        // Process single chunk
-        const processChunk = async (content, isChunked = false, isBegin = false, isEnd = false, chunkIndex = 0, totalChunks = 1) => {
-            
-            let prompt; 
-
-            if (isChunked && isBegin)
-              prompt = PROMPT_TEMPLATES.beginChunked(chunkIndex, totalChunks, chunkedWords);
-            else if (isChunked && isEnd)
-              prompt = PROMPT_TEMPLATES.endChunked(chunkIndex, totalChunks, chunkedWords);
-            else if (isChunked)
-              prompt = PROMPT_TEMPLATES.chunked(chunkIndex, totalChunks, chunkedWords);
-            else
-              prompt = PROMPT_TEMPLATES.regular;
-
-            
-            try {
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: MODEL_CONFIG.model,
-                    messages: [
-                        {
-                            role: "system",
-                            content: "You are a prompt analysis engine. Return ONLY valid JSON."
-                        },
-                        {
-                            role: "user",
-                            content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}`
-                        }
-                    ],
-                    temperature: MODEL_CONFIG.temperature,
-                    max_tokens: MODEL_CONFIG.max_tokens,
-                    response_format: { type: "json_object" }
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
-            }
-
-            return await response.json();
-            
-            } catch (error) {
-                throw error;
-            }
-        };
         
         if (tokenCount >= optimalTokenLen * 0.75 && tokenCount <= optimalTokenLen * 1.25) {
               sendResponse({
@@ -247,24 +192,21 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
             };
 
             for (let i = 0; i < CHUNKS; i++) {
-                const start = i * maxOptimalTokenLen;
-                const end = Math.min((i + 1) * maxOptimalTokenLen, tokenCount);
-                const chunkTokens = tokens.slice(start, end);
-                const actualChunkTokens = chunkTokens.length;
-                const chunkText = new TextDecoder().decode(enc.decode(chunkTokens));
-
-                // Verify chunk token count
-                if (actualChunkTokens > maxOptimalTokenLen) {
-                    throw new Error(`Chunk ${i+1} too large (${actualChunkTokens} tokens)`);
-                }
                 
-                if (i == 0) {
-                  result = validateUnifiedResponse(await processChunk(chunkText, true, true, false, i, CHUNKS));
-                } else if (i == CHUNKS-1) {
-                  result = validateUnifiedResponse(await processChunk(chunkText, true, false, true, i, CHUNKS));
-                } else {
-                  result = validateUnifiedResponse(await processChunk(chunkText, true, false, false, i, CHUNKS));
-                }
+                const chunkText = encoder.decode(tokens.slice(
+                  i * maxOptimalTokenLen,
+                  Math.min((i + 1) * maxOptimalTokenLen, tokenCount)
+                ));
+          
+                const result = await callAnalysisAPI(chunkText, true, {
+                  type: i === 0 ? 'beginChunked' : 
+                        i === CHUNKS-1 ? 'endChunked' : 'chunked',
+                  isBegin: i === 0,
+                  isEnd: i === CHUNKS-1,
+                  chunkIndex: i,
+                  totalChunks: CHUNKS,
+                });
+
                 cumulative.accuracy += result.Evaluation.Accuracy / CHUNKS;
                 result.Evaluation.Suggestions.forEach(s => cumulative.suggestions.add(s));
                 cumulative.reworded.push(result.Optimization.Reword);
@@ -278,11 +220,11 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
               tokenCount: tokenCount
             }
 
-            sendResponse(finalResponse);
+            sendResponse(validateUnifiedResponse(finalResponse));
 
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
-            const result = validateUnifiedResponse(await processChunk(prompt));
+            const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
             const finalResponse = {
               accuracy: result.Evaluation.Accuracy,
               suggestions: result.Evaluation.Suggestions,
@@ -290,7 +232,7 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
               wasChunked: false,
               tokenCount: tokenCount
             }
-            sendResponse(finalResponse);
+            sendResponse(validateUnifiedResponse(finalResponse));
         }        
 
     } catch (error) {
@@ -301,9 +243,7 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
             tokenCount,
             durationMs: Date.now() - startTime
         });
-    } finally {
-        releaseEncoder();
-    }
+    } 
 }
 
 // Same validateUnifiedResponse as before
