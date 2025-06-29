@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       ],
       temperature: 0.4,
       max_tokens: maxOptimalTokenLen,
-      response_format: { type: "json_object" }
+      response_format: { type: "json" }
     });
 
     // Validate and return response
