@@ -222,7 +222,7 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
 
             sendResponse(validateUnifiedResponse(finalResponse));
 
-        } else if (tokenCount < MAX_TOKENS_SINGLE && tokenCount > optimalTokenLen) {
+        } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
             const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
             const finalResponse = {
