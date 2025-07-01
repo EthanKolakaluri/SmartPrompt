@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "pages/api/**/*.js",
+      "use": "@vercel/node",
+      "config": { 
+        "includeFiles": ["background.js", "lib/**"] 
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/analyze",
+      "dest": "/pages/api/analyze.js",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/api/(.*)",
+      "status": 404,
+      "headers": { "Cache-Control": "no-store" }
+    }
+  ],
+  "rewrites": [
+    { "source": "/prompt", "destination": "/api/analyze" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "https://your-frontend.com" },
+        { "key": "Access-Control-Allow-Methods", "value": "POST" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ],
+  "regions": ["iad1"],
+  "functions": {
+    "pages/api/analyze.js": {
+      "memory": 3008,
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
