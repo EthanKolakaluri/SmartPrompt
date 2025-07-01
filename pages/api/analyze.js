@@ -3,11 +3,29 @@ import {
   MODEL_CONFIG,
   PROMPT_TEMPLATES 
 } from './background.js';
+import rateLimit from 'express-rate-limit';
+
+// Rate limiting configuration (15 minutes, max 100 requests per IP)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false, // Disable deprecated headers
+  message: 'Too many requests, please try again later'
+});
 
 export default async function handler(req, res) {
   
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', 'https://your-frontend.com');
+  const allowedOrigins = [
+    'https://your-frontend.com',
+    process.env.NODE_ENV === 'development' && 'http://localhost:3000'
+  ].filter(Boolean);
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   
