@@ -92,9 +92,17 @@ const PROMPT_TEMPLATES = {
 };
 
 export default async function handler(req, res) {
+
+  //CORS dynamic input handling
+  const allowedOrigins = [
+    'https://your-frontend.com',
+    process.env.NODE_ENV === 'development' && 'http://localhost:3000'
+  ].filter(Boolean);
   
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', 'https://your-frontend.com');
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 
