@@ -1,8 +1,95 @@
 import { OpenAI } from 'openai';
-import { 
-  MODEL_CONFIG,
-  PROMPT_TEMPLATES 
-} from './background.js';
+
+// Configuration Constants
+const MODEL_CONFIG = {
+  model: "gpt-4o",
+  temperature: 0.4,
+  max_tokens: 128000,
+  optimalTokenLen: 4820,
+  maxOptimalTokenLen: 9820,
+};
+
+const PROMPT_TEMPLATES = {
+  regular: `Analyze and optimize this prompt by doing the following: 
+
+        **1. Evaluation (JSON):**
+        - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
+        - 3 NEW suggestions for improvement (don't repeat previous ones)
+
+        **2. Optimization (JSON):**
+        - A reworded version of this in (${(optimalTokenLen*4)/3}) words
+
+        Return EXACTLY:
+        {
+            "Evaluation": {
+                "Accuracy": X,
+                "Suggestions": ["...", "...", "..."]
+            },
+            "Optimization": {
+                "Reword": "..."
+            }
+        }`,
+
+  beginChunked: (chunkIndex, totalChunks, words) => `Analyze and optimize this prompt chunk (${chunkIndex + 1}/${totalChunks}) in (${words}) words by adding to (NOT replacing) the cumulative analysis:
+
+      **1. Evaluation (JSON):**
+       - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
+       - 3 NEW suggestions for improvement (don't repeat previous ones)
+
+      **2. Optimization (JSON):**
+       - A reworded version of JUST THIS CHUNK, assume this is the first chunk in the batch and other chunks will follow this one.
+
+      Return EXACTLY:
+      {
+          "Evaluation": {
+              "Accuracy": X,
+              "Suggestions": ["...", "...", "..."]
+          },
+          "Optimization": {
+              "Reword": "..."
+          }
+      }`,
+
+  endChunked: (chunkIndex, totalChunks, words) => `Analyze and optimize this prompt chunk (${chunkIndex + 1}/${totalChunks}) in (${words}) words by adding to (NOT replacing) the cumulative analysis:
+
+      **1. Evaluation (JSON):**
+       - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
+       - 3 NEW suggestions for improvement (don't repeat previous ones)
+
+      **2. Optimization (JSON):**
+       - A reworded version of JUST THIS CHUNK, assume this is the last chunk needed. So end it strong.
+
+      Return EXACTLY:
+      {
+          "Evaluation": {
+              "Accuracy": X,
+              "Suggestions": ["...", "...", "..."]
+          },
+          "Optimization": {
+              "Reword": "..."
+          }
+      }`,
+
+  chunked: (chunkIndex, totalChunks, words) => `Analyze and optimize this prompt chunk (${chunkIndex + 1}/${totalChunks}) in (${words}) words by adding to (NOT replacing) the cumulative analysis:
+
+        **1. Evaluation (JSON):**
+        - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
+        - 3 NEW suggestions for improvement (don't repeat previous ones)
+
+        **2. Optimization (JSON):**
+        - A reworded version of JUST THIS CHUNK, assume this chunk is building off the previous chunk and will have content following afterwards.
+
+        Return EXACTLY:
+        {
+            "Evaluation": {
+                "Accuracy": X,
+                "Suggestions": ["...", "...", "..."]
+            },
+            "Optimization": {
+                "Reword": "..."
+            }
+        }`
+};
 
 export default async function handler(req, res) {
   
