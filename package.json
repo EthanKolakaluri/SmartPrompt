@@ -17,20 +17,26 @@
     "cors": "^2.8.5",
     "uuid": "^9.0.0",
     "rimraf": "^5.0.0",
-    "lru-cache": "^10.0.0"  
+    "lru-cache": "^10.0.0"
   },
   "devDependencies": {
     "eslint": "^8.56.0",  
     "eslint-config-next": "14.1.0",
     "glob": "^10.3.10",
     "debug": "^4.3.4",
-    "@eslint/object-schema": "^1.0.0",
-    "@eslint/config-array": "^1.0.0",
+    "@eslint/object-schema": "^2.1.6",  
+    "@eslint/config-array": "^0.21.0",
     "husky": "^8.0.3",
     "vercel": "^34.0.0"
   },
   "engines": {
     "node": ">=18.18.0",
     "npm": ">=9.0.0"
+  },
+  "overrides": {
+    "are-we-there-yet": "^3.0.0",
+    "npmlog": "^7.0.0",
+    "gauge": "^5.0.0",
+    "inflight": "npm:lru-cache@^10.0.0"
   }
 }
