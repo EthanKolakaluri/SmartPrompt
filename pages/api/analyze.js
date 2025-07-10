@@ -91,6 +91,7 @@ const PROMPT_TEMPLATES = {
             }
         }`
 };
+
 let encoding
 
 async function getEncoding() {
@@ -109,27 +110,43 @@ async function getEncoding() {
 }
 
 async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
-  const userToken = await chrome.identity.getAuthToken({ interactive: true });
   
-  const response = await fetch('https://smart-prompt-lake.vercel.app/', {
+  // Mock the request object structure that handler expects
+  const mockReq = {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${userToken}`,
-      'Content-Type': 'application/json'
+      authorization: `Bearer ${await chrome.identity.getAuthToken({ interactive: true })}`
     },
-    body: JSON.stringify({
-      content, // Changed from 'prompt' for consistency
+    body: {
+      content,
       isChunked,
-      ...chunkInfo, // { isBegin, isEnd, chunkIndex, totalChunks, tokenLen}
-      modelConfig: MODEL_CONFIG,
-      template: isChunked 
-          ? PROMPT_TEMPLATES[chunkInfo.type || 'chunked'] 
-          : PROMPT_TEMPLATES.regular
-    })
-  });
-  
-  if (!response.ok) throw new Error(await response.text());
-  return validateUnifiedResponse(await response.json());
+      ...chunkInfo
+    }
+  };
+
+  // Mock response object that collects the output
+  const mockRes = {
+    statusCode: 200,
+    jsonData: null,
+    status: function(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json: function(data) {
+      this.jsonData = data;
+      return this;
+    }
+  };
+
+  // Call the handler directly
+  await handler(mockReq, mockRes);
+
+  // Handle errors
+  if (mockRes.statusCode !== 200) {
+    throw new Error(mockRes.jsonData?.error || 'Analysis failed');
+  }
+
+  return validateUnifiedResponse(mockRes.jsonData);
 }
 
 // Rate limiting
