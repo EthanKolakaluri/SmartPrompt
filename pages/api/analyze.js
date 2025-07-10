@@ -1,4 +1,3 @@
-import { get_encoding } from '@dqbd/tiktoken';
 import wasm from '@dqbd/tiktoken/tiktoken_bg.wasm';
 import { OpenAI } from 'openai';
 
