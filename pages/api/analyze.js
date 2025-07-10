@@ -1,4 +1,5 @@
-import * as tiktoken from '@dqbd/tiktoken';
+import { get_encoding } from '@dqbd/tiktoken';
+import wasm from '@dqbd/tiktoken/tiktoken_bg.wasm';
 import { OpenAI } from 'openai';
 
 // Configuration Constants
@@ -96,75 +97,93 @@ let encoding
 
 async function getEncoding() {
   if (!encoding) {
-    try {
-        const wasmResponse = await fetch('https://tiktoken.pages.dev/tiktoken_bg.wasm');
-        encoding = await tiktoken.get_encoding('cl100k_base', {
-          wasm: new Uint8Array(await wasmResponse.arrayBuffer())
-        });
-    } catch (error) {
-      console.error("Failed to initialize tokenizer:", error);
-          throw new Error("Tokenizer initialization failed");
-    }
+    encoding = await get_encoding('cl100k_base', { wasm }); // ← Uses imported WASM
   }
-  return encoding; // Reuse this everywhere
+  return encoding;
 }
 
 async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
   
-  // Mock the request object structure that handler expects
-  const mockReq = {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${await chrome.identity.getAuthToken({ interactive: true })}`
-    },
-    body: {
-      content,
-      isChunked,
-      ...chunkInfo
+try {
+    // Calculate dynamic values
+    const chunkedWords = Math.round((maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 0.75);
+
+    // Select and generate template
+    let prompt;
+    if (isChunked && chunkInfo.isBegin) {
+      prompt = PROMPT_TEMPLATES.beginChunked(chunkInfo.chunkIndex, chunkInfo.totalChunks, chunkedWords);
+    } else if (isChunked && chunkInfo.isEnd) {
+      prompt = PROMPT_TEMPLATES.endChunked(chunkInfo.chunkIndex, chunkInfo.totalChunks, chunkedWords);
+    } else if (isChunked) {
+      prompt = PROMPT_TEMPLATES.chunked(chunkInfo.chunkIndex, chunkInfo.totalChunks, chunkedWords);
+    } else {
+      prompt = PROMPT_TEMPLATES.regular(optimalTokenLen);
     }
-  };
 
-  // Mock response object that collects the output
-  const mockRes = {
-    statusCode: 200,
-    jsonData: null,
-    status: function(code) {
-      this.statusCode = code;
-      return this;
-    },
-    json: function(data) {
-      this.jsonData = data;
-      return this;
-    }
-  };
+    // OpenAI call
+    const openai = new OpenAI({apiKey: process.env.API_KEY});
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON." },
+        { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
+      ],
+      temperature: 0.4,
+      max_tokens: maxOptimalTokenLen,
+      response_format: { type: "json_object" }
+    });
 
-  // Call the handler directly
-  await handler(mockReq, mockRes);
+    // Validate and return response
+    const result = JSON.parse(completion.choices[0].message.content);
+    res.status(200).json({
+      Evaluation: {
+        Accuracy: Math.max(0, Math.min(100, result.Evaluation?.Accuracy || 0)),
+        Suggestions: result.Evaluation?.Suggestions?.slice(0, 3) || []
+      },
+      Optimization: {
+        Reword: result.Optimization?.Reword?.trim() || ""
+      }
+    });
 
-  // Handle errors
-  if (mockRes.statusCode !== 200) {
-    throw new Error(mockRes.jsonData?.error || 'Analysis failed');
+  } catch (error) {
+    console.error("API Error:", error);
+    return res.status(500).json({ error: error.message });
   }
-
-  return validateUnifiedResponse(mockRes.jsonData);
+  
+  if (!result.ok) throw new Error("Invalid JSON");
+  
+  return res.json(validateUnifiedResponse(result));
 }
 
 // Rate limiting
 const RATE_LIMIT = new Map();
 const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
 
-  chrome.runtime.onMessage.addListener((request, sendResponse) => {
-    if (request.action === "analyzePrompt") {
-      handlePromptAnalysis(request, sendResponse);
-      return true; 
-    }
-  });
+export default async function handler(req, res) {
 
-  async function handlePromptAnalysis(request, sendResponse) {
-    const startTime = Date.now();
+  //CORS dynamic input handling
+  const allowedOrigins = [
+    'https://your-frontend.com',
+    process.env.NODE_ENV === 'development' && 'http://localhost:3000'
+  ].filter(Boolean);
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+
+  // Auth and validation
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  
+  const authToken = req.headers.authorization?.split(' ')[1];
+  if (!authToken) return res.status(401).json({ error: 'Unauthorized' });
+
+     const startTime = Date.now();
 
     try {
-        const { prompt } = request;
+        const { prompt } = req.body;
 
         if (!prompt?.trim()) {
           throw new Error("Prompt cannot be empty");
@@ -184,12 +203,11 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
         }
         
         if (tokenCount >= optimalTokenLen * 0.75 && tokenCount <= optimalTokenLen * 1.25) {
-              sendResponse({
+              return res.json({
                 type: 'no_optimization_needed',
                 message: 'Prompt is already within optimal token range',
                 tokenCount
             });
-            return;
         }
 
         if (tokenCount >= MAX_TOKENS_SINGLE) {
@@ -229,7 +247,7 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
               tokenCount: tokenCount
             }
 
-            sendResponse(validateUnifiedResponse(finalResponse));
+            return res.json(validateUnifiedResponse(finalResponse));
 
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
@@ -241,12 +259,12 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
               wasChunked: false,
               tokenCount: tokenCount
             }
-            sendResponse(validateUnifiedResponse(finalResponse));
+            return res.json(validateUnifiedResponse(finalResponse));
         }        
 
     } catch (error) {
         console.error("Analysis Error:", error);
-        sendResponse({
+        return res.status(500).json({
             type: 'analysis_error',
             error: error.message,
             tokenCount,
@@ -258,7 +276,6 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
 // Same validateUnifiedResponse as before
 function validateUnifiedResponse(data) {
     try {
-
         // Handle both direct API responses and potential stringified JSON
         const rawContent = typeof data === 'string' ? data : 
                           data.choices?.[0]?.message?.content || '{}';
@@ -301,81 +318,4 @@ function validateUnifiedResponse(data) {
             Optimization: { Reword: "" }
         };
     }
-}
-
-export default async function handler(req, res) {
-
-  //CORS dynamic input handling
-  const allowedOrigins = [
-    'https://your-frontend.com',
-    process.env.NODE_ENV === 'development' && 'http://localhost:3000'
-  ].filter(Boolean);
-  
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-
-  // Auth and validation
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
-  const authToken = req.headers.authorization?.split(' ')[1];
-  if (!authToken) return res.status(401).json({ error: 'Unauthorized' });
-
-  try {
-    const { 
-      content,
-      isChunked = false,
-      isBegin = false,
-      isEnd = false,
-      chunkIndex = 0,
-      totalChunks = 1,
-    } = req.body;
-
-    // Calculate dynamic values
-    const chunkedWords = Math.round((maxOptimalTokenLen / (totalChunks || 1)) * 0.75);
-
-    // Select and generate template
-    let prompt;
-    if (isChunked && isBegin) {
-      prompt = PROMPT_TEMPLATES.beginChunked(chunkIndex, totalChunks, chunkedWords);
-    } else if (isChunked && isEnd) {
-      prompt = PROMPT_TEMPLATES.endChunked(chunkIndex, totalChunks, chunkedWords);
-    } else if (isChunked) {
-      prompt = PROMPT_TEMPLATES.chunked(chunkIndex, totalChunks, chunkedWords);
-    } else {
-      prompt = PROMPT_TEMPLATES.regular(optimalTokenLen);
-    }
-
-    // OpenAI call
-    const openai = new OpenAI({apiKey: process.env.API_KEY});
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON." },
-        { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
-      ],
-      temperature: 0.4,
-      max_tokens: maxOptimalTokenLen,
-      response_format: { type: "json_object" }
-    });
-
-    // Validate and return response
-    const result = JSON.parse(completion.choices[0].message.content);
-    res.status(200).json({
-      Evaluation: {
-        Accuracy: Math.max(0, Math.min(100, result.Evaluation?.Accuracy || 0)),
-        Suggestions: result.Evaluation?.Suggestions?.slice(0, 3) || []
-      },
-      Optimization: {
-        Reword: result.Optimization?.Reword?.trim() || ""
-      }
-    });
-
-  } catch (error) {
-    console.error("API Error:", error);
-    res.status(500).json({ error: error.message });
-  }
 }
