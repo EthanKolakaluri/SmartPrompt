@@ -25,4 +25,7 @@ const nextConfig = {
   // For Next.js 13+
   experimental: {
     serverComponentsExternalPackages: ['@dqbd/tiktoken'],
-  },
+  }
+};
+
+module.exports = nextConfig;
