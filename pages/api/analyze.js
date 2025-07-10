@@ -1,4 +1,3 @@
-import wasm from '@dqbd/tiktoken/tiktoken_bg.wasm';
 import { OpenAI } from 'openai';
 
 // Configuration Constants
@@ -97,7 +96,8 @@ let encoding
 async function getEncoding() {
   if (!encoding) {
     const { get_encoding } = await import('@dqbd/tiktoken');
-    encoding = await get_encoding('cl100k_base', { wasm }); // ← Uses imported WASM
+    const wasmModule = await import('@dqbd/tiktoken/tiktoken_bg.wasm?module');
+    encoding = get_encoding('cl100k_base', { wasm: wasmModule });
   }
   return encoding;
 }
