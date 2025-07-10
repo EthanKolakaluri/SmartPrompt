@@ -19,7 +19,7 @@ const PROMPT_TEMPLATES = {
         - 3 NEW suggestions for improvement (don't repeat previous ones)
 
         **2. Optimization (JSON):**
-        - A reworded version of this in (${(optimalTokenLen*4)/3}) words
+        - A reworded version of this in (${(MODEL_CONFIG.optimalTokenLen*4)/3}) words
 
         Return EXACTLY:
         {
@@ -106,7 +106,7 @@ async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
   
 try {
     // Calculate dynamic values
-    const chunkedWords = Math.round((maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 0.75);
+    const chunkedWords = Math.round((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 0.75);
 
     // Select and generate template
     let prompt;
@@ -117,7 +117,7 @@ try {
     } else if (isChunked) {
       prompt = PROMPT_TEMPLATES.chunked(chunkInfo.chunkIndex, chunkInfo.totalChunks, chunkedWords);
     } else {
-      prompt = PROMPT_TEMPLATES.regular(optimalTokenLen);
+      prompt = PROMPT_TEMPLATES.regular;
     }
 
     // OpenAI call
@@ -129,30 +129,17 @@ try {
         { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
       ],
       temperature: 0.4,
-      max_tokens: maxOptimalTokenLen,
+      max_tokens: MODEL_CONFIG.maxOptimalTokenLen,
       response_format: { type: "json_object" }
     });
 
     // Validate and return response
-    const result = JSON.parse(completion.choices[0].message.content);
-    res.status(200).json({
-      Evaluation: {
-        Accuracy: Math.max(0, Math.min(100, result.Evaluation?.Accuracy || 0)),
-        Suggestions: result.Evaluation?.Suggestions?.slice(0, 3) || []
-      },
-      Optimization: {
-        Reword: result.Optimization?.Reword?.trim() || ""
-      }
-    });
+    return validateUnifiedResponse(completion.choices[0].message.content);
 
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ error: error.message });
+    throw error;
   }
-  
-  if (!result.ok) throw new Error("Invalid JSON");
-  
-  return res.json(validateUnifiedResponse(result));
 }
 
 // Rate limiting
@@ -164,7 +151,8 @@ export default async function handler(req, res) {
   //CORS dynamic input handling
   const allowedOrigins = [
     'https://your-frontend.com',
-    process.env.NODE_ENV === 'development' && 'http://localhost:3000'
+    ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
+    /^chrome-extension:\/\/.*/ 
   ].filter(Boolean);
   
   const origin = req.headers.origin;
@@ -194,15 +182,15 @@ export default async function handler(req, res) {
         const tokens = encoder.encode(prompt);
         const tokenCount = tokens.length;
 
-        const MAX_TOKENS_SINGLE = maxOptimalTokenLen;
-        const TOKEN_LIMIT = max_tokens-(0.0625 * max_tokens);
-        const CHUNKS = Math.ceil(tokenCount/maxOptimalTokenLen);
+        const MAX_TOKENS_SINGLE = MODEL_CONFIG.maxOptimalTokenLen;
+        const TOKEN_LIMIT = MODEL_CONFIG.max_tokens-(0.0625 * MODEL_CONFIG.max_tokens);
+        const CHUNKS = Math.ceil(tokenCount/MODEL_CONFIG.maxOptimalTokenLen);
 
         if (tokenCount >= TOKEN_LIMIT) {
             throw new Error(`Input exceeds ${TOKEN_LIMIT} token limit (has ${tokenCount} tokens)`);
         }
         
-        if (tokenCount >= optimalTokenLen * 0.75 && tokenCount <= optimalTokenLen * 1.25) {
+        if (tokenCount >= MODEL_CONFIG.optimalTokenLen * 0.75 && tokenCount <= MODEL_CONFIG.optimalTokenLen * 1.25) {
               return res.json({
                 type: 'no_optimization_needed',
                 message: 'Prompt is already within optimal token range',
@@ -221,8 +209,8 @@ export default async function handler(req, res) {
             for (let i = 0; i < CHUNKS; i++) {
                 
                 const chunkText = encoder.decode(tokens.slice(
-                  i * maxOptimalTokenLen,
-                  Math.min((i + 1) * maxOptimalTokenLen, tokenCount)
+                  i * MODEL_CONFIG.maxOptimalTokenLen,
+                  Math.min((i + 1) * MODEL_CONFIG.maxOptimalTokenLen, tokenCount)
                 ));
           
                 const result = await callAnalysisAPI(chunkText, true, {
