@@ -97,6 +97,7 @@ let encoding
 
 async function getEncoding() {
   if (!encoding) {
+    const { get_encoding } = await import('@dqbd/tiktoken');
     encoding = await get_encoding('cl100k_base', { wasm }); // ← Uses imported WASM
   }
   return encoding;
