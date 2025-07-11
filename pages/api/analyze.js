@@ -91,15 +91,28 @@ const PROMPT_TEMPLATES = {
         }`
 };
 
-let encoding
-
-async function getEncoding() {
-  if (!encoding) {
-    const { get_encoding } = await import('@dqbd/tiktoken');
-    const wasmModule = await import('@dqbd/tiktoken/tiktoken_bg.wasm?module');
-    encoding = get_encoding('cl100k_base', { wasm: wasmModule });
+// Option 1: Using Tiktoken Lite (Recommended for Vercel)
+async function getTokenCount(prompt) {
+  try {
+    const { Tiktoken } = await import('@dqbd/tiktoken/lite');
+    const cl100k_base = await import('@dqbd/tiktoken/encoders/cl100k_base.json');
+    
+    const encoding = new Tiktoken(
+      cl100k_base.bpe_ranks,
+      cl100k_base.special_tokens,
+      cl100k_base.pat_str
+    );
+    
+    const tokens = encoding.encode(prompt);
+    const tokenCount = tokens.length;
+    encoding.free(); // Important to prevent memory leaks
+    
+    return tokenCount;
+  } catch (error) {
+    console.error("Token counting error:", error);
+    // Fallback to approximate counting if Tiktoken fails
+    return Math.ceil(prompt.length / 4); // Rough estimate (~4 chars per token)
   }
-  return encoding;
 }
 
 async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
@@ -180,9 +193,7 @@ export default async function handler(req, res) {
         }
 
         // Initialize tiktoken
-        const encoder = await getEncoding();
-        const tokens = encoder.encode(prompt);
-        const tokenCount = tokens.length;
+        const tokenCount = await getTokenCount(prompt);
 
         const MAX_TOKENS_SINGLE = MODEL_CONFIG.maxOptimalTokenLen;
         const TOKEN_LIMIT = MODEL_CONFIG.max_tokens-(0.0625 * MODEL_CONFIG.max_tokens);
