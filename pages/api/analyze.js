@@ -146,6 +146,15 @@ try {
       response_format: { type: "json_object" }
     });
 
+    // Print the full response to console
+    console.log("OpenAI raw response:", completion);
+    
+    // Print just the message content
+    console.log("Generated content:", completion.choices[0].message.content);
+    
+    // Print formatted JSON
+    console.log("Formatted JSON:", JSON.parse(completion.choices[0].message.content));
+  
     // Validate and return response
     return validateUnifiedResponse(completion.choices[0].message.content);
 
