@@ -298,8 +298,11 @@ function validateUnifiedResponse(data) {
         }
 
         // Validate required fields
-        if (typeof content.Optimization?.Reword !== 'string') {
-            throw new Error("Missing required Reword field");
+        if (content.Optimization?.Reword == null) { // Checks both null and undefined
+            content.Optimization = content.Optimization || {};
+            content.Optimization.Reword = "";
+        } else if (typeof content.Optimization.Reword !== 'string') {
+            throw new Error("Reword must be a string if provided");
         }
 
         return {
