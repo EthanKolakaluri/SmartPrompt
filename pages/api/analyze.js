@@ -164,9 +164,6 @@ export default async function handler(req, res) {
 
   // Auth and validation
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
-  const authToken = req.headers.authorization?.split(' ')[1];
-  if (!authToken) return res.status(401).json({ error: 'Unauthorized' });
 
      const startTime = Date.now();
 
