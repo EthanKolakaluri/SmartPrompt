@@ -277,40 +277,46 @@ export default async function handler(req, res) {
 // Same validateUnifiedResponse as before
 function validateUnifiedResponse(data) {
     try {
-        // Handle both direct API responses and potential stringified JSON
-        const rawContent = typeof data === 'string' ? data : 
-                          data.choices?.[0]?.message?.content || '{}';
-        
-        if (data.includes('> ')) {
-            throw new Error("Blockquotes are unsupported");
+        // Handle both raw API responses and pre-parsed objects
+        let content;
+        if (typeof data === 'string') {
+            // Case 1: Raw API response (string)
+            if (data.includes('> ')) {
+                throw new Error("Blockquotes are unsupported");
+            }
+            content = JSON.parse(data);
+        } else if (data.choices?.[0]?.message?.content) {
+            // Case 2: Raw API response (object)
+            const rawContent = data.choices[0].message.content;
+            if (typeof rawContent === 'string' && rawContent.includes('> ')) {
+                throw new Error("Blockquotes are unsupported");
+            }
+            content = JSON.parse(rawContent);
+        } else {
+            // Case 3: Already parsed final response
+            content = data;
         }
-        
-        const content = JSON.parse(rawContent);
-        
-        // Validate chunked vs unified responses
-        const isChunked = content.Evaluation?.Accuracy !== undefined && 
-                         content.Optimization?.Reword !== undefined;
 
         // Validate required fields
         if (typeof content.Optimization?.Reword !== 'string') {
             throw new Error("Missing required Reword field");
         }
-  
-      return {
-        Evaluation: {
-          Accuracy: Math.round(
-            Math.max(0, Math.min(100, content.Evaluation?.Accuracy || 0))
-          ),
-          Suggestions: [...new Set(
-            (content.Evaluation?.Suggestions || [])
-              .slice(0, 3)
-              .filter(s => typeof s === 'string' && s.length > 0)
-          )]
-        },
-        Optimization: {
-          Reword: content.Optimization.Reword.trim()
-        }
-      };
+
+        return {
+            Evaluation: {
+                Accuracy: Math.round(
+                    Math.max(0, Math.min(100, content.Evaluation?.Accuracy || 0))
+                ),
+                Suggestions: [...new Set(
+                    (content.Evaluation?.Suggestions || [])
+                        .slice(0, 3)
+                        .filter(s => typeof s === 'string' && s.length > 0)
+                )]
+            },
+            Optimization: {
+                Reword: content.Optimization.Reword.trim()
+            }
+        };
 
     } catch (e) {
         console.error("Validation Error:", e);
