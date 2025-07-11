@@ -162,6 +162,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 
+  // Handle OPTIONS preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   // Auth and validation
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
