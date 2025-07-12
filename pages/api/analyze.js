@@ -255,6 +255,7 @@ export default async function handler(req, res) {
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
             const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
+            console.log(result);
             return res.json(result);
         }        
 
@@ -291,7 +292,7 @@ function validateUnifiedResponse(data) {
             // Case 3: Already parsed final response
             content = data;
         }
-
+        
         // Validate required fields
         if (content.Optimization?.Reword == null) { // Checks both null and undefined
             content.Optimization = content.Optimization || {};
@@ -300,21 +301,7 @@ function validateUnifiedResponse(data) {
             throw new Error("Reword must be a string if provided");
         }
 
-        return {
-            Evaluation: {
-                Accuracy: Math.round(
-                    Math.max(0, Math.min(100, content.Evaluation?.Accuracy || 0))
-                ),
-                Suggestions: [...new Set(
-                    (content.Evaluation?.Suggestions || [])
-                        .slice(0, 3)
-                        .filter(s => typeof s === 'string' && s.length > 0)
-                )]
-            },
-            Optimization: {
-                Reword: content.Optimization.Reword.trim()
-            }
-        };
+        return content;
 
     } catch (e) {
         console.error("Validation Error:", e);
