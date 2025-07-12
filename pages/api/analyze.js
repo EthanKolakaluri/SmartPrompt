@@ -250,13 +250,13 @@ export default async function handler(req, res) {
                 }
             }
 
-            return res.json(validateUnifiedResponse(finalResponse));
+            return res.send(validateUnifiedResponse(finalResponse));
 
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
             const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
             console.log(result);
-            return res.json(result);
+            return res.send(result);
         }        
 
     } catch (error) {
