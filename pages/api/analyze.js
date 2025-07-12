@@ -241,11 +241,13 @@ export default async function handler(req, res) {
             }
 
             const finalResponse = {
-              accuracy: Math.round(cumulative.accuracy * 10) / 10,
-              suggestions: Array.from(cumulative.suggestions),
-              reword: cumulative.reworded.join("\n\n"),
-              wasChunked: true,
-              tokenCount: tokenCount
+               Evaluation: {
+                  Accuracy: Math.round(cumulative.accuracy * 10) / 10,
+                  Suggestions: Array.from(cumulative.suggestions)
+                },
+                Optimization: {
+                  Reword: cumulative.reworded.join("\n\n")
+                }
             }
 
             return res.json(validateUnifiedResponse(finalResponse));
@@ -253,15 +255,7 @@ export default async function handler(req, res) {
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
             const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
-            const finalResponse = {
-              accuracy: result.Evaluation.Accuracy,
-              suggestions: result.Evaluation.Suggestions,
-              reword: result.Optimization.Reword,
-              wasChunked: false,
-              tokenCount: tokenCount
-            }
-
-            return res.json(validateUnifiedResponse(finalResponse));
+            return res.json(result);
         }        
 
     } catch (error) {
@@ -298,7 +292,6 @@ function validateUnifiedResponse(data) {
             content = data;
         }
 
-        console.log(content);
         // Validate required fields
         if (content.Optimization?.Reword == null) { // Checks both null and undefined
             content.Optimization = content.Optimization || {};
