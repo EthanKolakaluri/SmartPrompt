@@ -261,7 +261,6 @@ export default async function handler(req, res) {
               tokenCount: tokenCount
             }
 
-            console.log(validateUnifiedResponse(finalResponse));
             return res.json(validateUnifiedResponse(finalResponse));
         }        
 
@@ -299,6 +298,7 @@ function validateUnifiedResponse(data) {
             content = data;
         }
 
+        console.log(content);
         // Validate required fields
         if (content.Optimization?.Reword == null) { // Checks both null and undefined
             content.Optimization = content.Optimization || {};
