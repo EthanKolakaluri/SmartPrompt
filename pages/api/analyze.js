@@ -186,7 +186,8 @@ export default async function handler(req, res) {
      const startTime = Date.now();
 
     try {
-        const { prompt } = JSON.parse(req.body);
+        const temp = JSON.stringify(req.body);
+        const { prompt } = JSON.parse(temp);
 
         if (!prompt?.trim()) {
           throw new Error("Prompt cannot be empty");
