@@ -161,7 +161,7 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
 
 export default async function handler(req, res) {
 
-  //CORS dynamic input handling
+ // CORS dynamic input handling
   const allowedOrigins = [
     'https://your-frontend.com',
     ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
@@ -169,10 +169,19 @@ export default async function handler(req, res) {
   ].filter(Boolean);
   
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
+  
+  // Fixed origin check (supports regex)
+  if (allowedOrigins.some(allowed => 
+    typeof allowed === 'string' 
+      ? allowed === origin 
+      : allowed.test(origin)
+  )) {
     res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin'); // Cache safety
   }
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
+  
+  // Standard CORS headers
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS'); // ◀◀◀ Added OPTIONS
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 
   // Handle OPTIONS preflight request
@@ -186,7 +195,7 @@ export default async function handler(req, res) {
      const startTime = Date.now();
 
     try {
-        const { prompt } = JSON.parse(JSON.stringify({Prompt: req.body}));
+        const { prompt } = req.body;
 
         if (!prompt?.trim()) {
           throw new Error("Prompt cannot be empty");
@@ -250,15 +259,12 @@ export default async function handler(req, res) {
                 }
             }
 
-            const concatenatedResult = JSON.stringify(validateUnifiedResponse(finalResponse));
-            res.setHeader('Content-Type', 'text/plain'); 
-            return res.send(concatenatedResult);
+            return res.send(validateUnifiedResponse(finalResponse));
 
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
-            const result = JSON.stringify(validateUnifiedResponse(await callAnalysisAPI(prompt, false)));
-            res.setHeader('Content-Type', 'text/plain'); 
-            return res.send(result);
+            const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
+            return res.json(result);
         }        
 
     } catch (error) {
