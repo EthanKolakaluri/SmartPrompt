@@ -250,12 +250,12 @@ export default async function handler(req, res) {
                 }
             }
 
-            return res.send(validateUnifiedResponse(finalResponse));
+            const concatenatedResult = JSON.stringify(validateUnifiedResponse(finalResponse));
+            return res.send(concatenatedResult);
 
         } else if (tokenCount < MAX_TOKENS_SINGLE) {
             // Process normally (unchanged)
-            const result = validateUnifiedResponse(await callAnalysisAPI(prompt, false));
-            console.log(result);
+            const result = JSON.stringify(validateUnifiedResponse(await callAnalysisAPI(prompt, false)));
             return res.send(result);
         }        
 
