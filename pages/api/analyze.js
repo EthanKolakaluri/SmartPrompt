@@ -169,6 +169,8 @@ export default async function handler(req, res) {
   ].filter(Boolean);
   
   const origin = req.headers.origin;
+
+  console.log(origin);
   
   // Fixed origin check (supports regex)
   if (allowedOrigins.some(allowed => 
