@@ -178,6 +178,11 @@ export default async function handler(req, res) {
   )) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin'); // Cache safety
+  } else {
+     return res.status(403).json({ 
+      error: "Forbidden: Origin not allowed",
+      receivedOrigin: origin // Optional (for debugging)
+      });
   }
   
   // Standard CORS headers
