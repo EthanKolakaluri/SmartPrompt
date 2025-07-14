@@ -164,13 +164,12 @@ export default async function handler(req, res) {
  // CORS dynamic input handling
   const allowedOrigins = [
     'https://your-frontend.com',
+     'https://chatgpt.com',
     ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
     /^chrome-extension:\/\/.*/ 
   ].filter(Boolean);
   
   const origin = req.headers.origin;
-
-  console.log(origin);
   
   // Fixed origin check (supports regex)
   if (allowedOrigins.some(allowed => 
