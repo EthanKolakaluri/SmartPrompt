@@ -250,7 +250,6 @@ export default async function handler(req, res) {
                   totalChunks: CHUNKS,
                 });
 
-                console.log(result);
                 cumulative.accuracy += result.Evaluation.Accuracy / CHUNKS;
                 result.Evaluation.Suggestions.forEach(s => cumulative.suggestions.add(s));
                 cumulative.reworded.push(result.Optimization.Reword);
