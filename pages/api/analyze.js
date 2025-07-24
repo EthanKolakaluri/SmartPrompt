@@ -119,7 +119,7 @@ async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
   
 try {
     // Calculate dynamic values
-    const chunkedWords = Math.round((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 0.75);
+    const chunkedWords = Math.round((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 1.33);
 
     // Select and generate template
     let prompt;
