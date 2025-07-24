@@ -17,7 +17,7 @@ const PROMPT_TEMPLATES = {
         - 3 NEW suggestions for improvement (don't repeat previous ones)
 
         **2. Optimization (JSON):**
-        - A reworded version of this in (${(MODEL_CONFIG.optimalTokenLen*4)/3}) words
+        - A reworded version of this in (${(MODEL_CONFIG.maxOptimalTokenLen*4)/3}) words
 
         Return EXACTLY:
         {
