@@ -247,13 +247,14 @@ export default async function handler(req, res) {
 
             for (let i = 0; i < CHUNKS; i++) {
                 
-                const chunkText = encoder.decode(tokens.slice(
-                  i * MODEL_CONFIG.maxOptimalTokenLen,
-                  Math.min((i + 1) * MODEL_CONFIG.maxOptimalTokenLen, tokenCount)
-                ));
+                const CHAR_PER_CHUNK = Math.floor(MODEL_CONFIG.maxOptimalTokenLen * 1.33);
+                const start = i * CHAR_PER_CHUNK;
+                const end = Math.min((i + 1) * CHAR_PER_CHUNK, prompt.length); // ✅ Use property
+                let chunkText = prompt.slice(start, end);
 
-                console.log(chunkText);
-
+                const lastSpace = chunkText.lastIndexOf(' ');
+                chunkText = lastSpace > 0 && i < CHUNKS - 1 ? chunkText.slice(0, lastSpace) : chunkText;
+              
                 const result = await callAnalysisAPI(chunkText, true, {
                   type: i === 0 ? 'beginChunked' : 
                         i === CHUNKS-1 ? 'endChunked' : 'chunked',
