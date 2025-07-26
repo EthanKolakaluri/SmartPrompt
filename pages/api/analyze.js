@@ -17,7 +17,7 @@ const PROMPT_TEMPLATES = {
         - 3 NEW suggestions for improvement (don't repeat previous ones)
 
         **2. Optimization (JSON):**
-        - A reworded version of this in (${(MODEL_CONFIG.maxOptimalTokenLen*4)/3}) words
+        - A reworded version of this in (${(MODEL_CONFIG.maxOptimalTokenLen*17)/24}) words
 
         Return EXACTLY:
         {
@@ -125,7 +125,7 @@ async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
   
 try {
     // Calculate dynamic values
-    const chunkedWords = Math.round((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 0.708333);
+    const chunkedWords = Math.round(((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 17)/24);
 
     // Select and generate template
     let prompt;
@@ -247,7 +247,7 @@ export default async function handler(req, res) {
 
             for (let i = 0; i < CHUNKS; i++) {
                 
-                const CHAR_PER_CHUNK = Math.floor(MODEL_CONFIG.maxOptimalTokenLen * 0.708333);
+                const CHAR_PER_CHUNK = Math.floor((MODEL_CONFIG.maxOptimalTokenLen * 17)/24);
                 const start = Math.min(i * CHAR_PER_CHUNK,prompt.length);
                 const end = Math.min((i + 1) * CHAR_PER_CHUNK, prompt.length); // ✅ Use property
                 let chunkText = prompt.slice(start, end);
