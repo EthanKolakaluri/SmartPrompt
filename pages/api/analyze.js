@@ -206,6 +206,7 @@ export default async function handler(req, res) {
 
      const startTime = Date.now();
      let encoder;
+     let tokenCount;
 
     try {
         const { prompt } = req.body;
@@ -216,7 +217,7 @@ export default async function handler(req, res) {
 
         // Initialize tiktoken
         const result = await getTokenCount(prompt);
-        const tokenCount = result.count;
+        tokenCount = result.count;
         const tokens = result.tokens;
         encoder = result.encoder;
 
