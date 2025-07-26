@@ -105,13 +105,19 @@ async function getTokenCount(prompt) {
     
     const tokens = encoding.encode(prompt);
     const tokenCount = tokens.length;
-    encoding.free(); // Important to prevent memory leaks
     
-    return tokenCount;
+    return {  // Return both values as an object
+      count: tokenCount,
+      tokens: tokens,
+      encoder: encoding // Return the encoder if you need it later
+    };
   } catch (error) {
     console.error("Token counting error:", error);
-    // Fallback to approximate counting if Tiktoken fails
-    return Math.ceil(prompt.length / 4); // Rough estimate (~4 chars per token)
+     return {
+      count: Math.ceil(prompt.length / 4),
+      tokens: null,
+      encoder: null
+    };
   }
 }
 
@@ -199,6 +205,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
      const startTime = Date.now();
+     let encoder;
 
     try {
         const { prompt } = req.body;
@@ -208,7 +215,10 @@ export default async function handler(req, res) {
         }
 
         // Initialize tiktoken
-        const tokenCount = await getTokenCount(prompt);
+        const result = await getTokenCount(prompt);
+        const tokenCount = result.count;
+        const tokens = result.tokens;
+        encoder = result.encoder;
 
         const MAX_TOKENS_SINGLE = MODEL_CONFIG.maxOptimalTokenLen;
         const TOKEN_LIMIT = MODEL_CONFIG.max_tokens-(0.0625 * MODEL_CONFIG.max_tokens);
@@ -255,6 +265,8 @@ export default async function handler(req, res) {
                 cumulative.reworded.push(result.Optimization.Reword);
             }
 
+            if (encoder) encoder.free();
+
             const finalResponse = {
                Evaluation: {
                   Accuracy: Math.round(cumulative.accuracy * 10) / 10,
@@ -281,7 +293,9 @@ export default async function handler(req, res) {
             tokenCount,
             durationMs: Date.now() - startTime
         });
-    } 
+    } finally {
+      if (encoder) encoder.free();
+    }
 }
 
 // Same validateUnifiedResponse as before
