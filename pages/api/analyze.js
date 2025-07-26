@@ -125,7 +125,7 @@ async function callAnalysisAPI(content, isChunked = false, chunkInfo = {}) {
   
 try {
     // Calculate dynamic values
-    const chunkedWords = Math.round((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 1.4167777);
+    const chunkedWords = Math.round((MODEL_CONFIG.maxOptimalTokenLen / (chunkInfo.totalChunks || 1)) * 0.708333);
 
     // Select and generate template
     let prompt;
@@ -247,7 +247,7 @@ export default async function handler(req, res) {
 
             for (let i = 0; i < CHUNKS; i++) {
                 
-                const CHAR_PER_CHUNK = Math.floor(MODEL_CONFIG.maxOptimalTokenLen * 1.4166667);
+                const CHAR_PER_CHUNK = Math.floor(MODEL_CONFIG.maxOptimalTokenLen * 0.708333);
                 const start = Math.min(i * CHAR_PER_CHUNK,prompt.length);
                 const end = Math.min((i + 1) * CHAR_PER_CHUNK, prompt.length); // ✅ Use property
                 let chunkText = prompt.slice(start, end);
