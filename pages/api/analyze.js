@@ -247,8 +247,8 @@ export default async function handler(req, res) {
 
             for (let i = 0; i < CHUNKS; i++) {
                 
-                const CHAR_PER_CHUNK = Math.floor(MODEL_CONFIG.maxOptimalTokenLen * 1.33);
-                const start = i * CHAR_PER_CHUNK;
+                const CHAR_PER_CHUNK = Math.floor(MODEL_CONFIG.maxOptimalTokenLen * 1.4166667);
+                const start = Math.min(i * CHAR_PER_CHUNK,prompt.length);
                 const end = Math.min((i + 1) * CHAR_PER_CHUNK, prompt.length); // ✅ Use property
                 let chunkText = prompt.slice(start, end);
 
