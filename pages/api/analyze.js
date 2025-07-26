@@ -254,6 +254,8 @@ export default async function handler(req, res) {
 
                 const lastSpace = chunkText.lastIndexOf(' ');
                 chunkText = lastSpace > 0 && i < CHUNKS - 1 ? chunkText.slice(0, lastSpace) : chunkText;
+
+                if (chunkText.length === 0) break;
               
                 const result = await callAnalysisAPI(chunkText, true, {
                   type: i === 0 ? 'beginChunked' : 
@@ -269,8 +271,6 @@ export default async function handler(req, res) {
                 cumulative.reworded.push(result.Optimization.Reword);
 
             }
-
-            if (encoder) encoder.free();
 
             const finalResponse = {
                Evaluation: {
