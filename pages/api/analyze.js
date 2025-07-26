@@ -251,7 +251,9 @@ export default async function handler(req, res) {
                   i * MODEL_CONFIG.maxOptimalTokenLen,
                   Math.min((i + 1) * MODEL_CONFIG.maxOptimalTokenLen, tokenCount)
                 ));
-            
+
+                console.log(chunkText);
+
                 const result = await callAnalysisAPI(chunkText, true, {
                   type: i === 0 ? 'beginChunked' : 
                         i === CHUNKS-1 ? 'endChunked' : 'chunked',
@@ -265,7 +267,6 @@ export default async function handler(req, res) {
                 result.Evaluation.Suggestions.forEach(s => cumulative.suggestions.add(s));
                 cumulative.reworded.push(result.Optimization.Reword);
 
-                console.log(`[CHUNK ${i}/${CHUNKS}]`);
             }
 
             if (encoder) encoder.free();
