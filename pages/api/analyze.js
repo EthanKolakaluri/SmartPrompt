@@ -175,6 +175,8 @@ export default async function handler(req, res) {
   const allowedOrigins = [
     'https://your-frontend.com',
      'https://chatgpt.com',
+    'https://lovable.dev',
+    'https://claude.ai',
     ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
     /^chrome-extension:\/\/.*/ 
   ].filter(Boolean);
