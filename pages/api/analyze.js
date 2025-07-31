@@ -17,7 +17,8 @@ const PROMPT_TEMPLATES = {
         - 3 NEW suggestions for improvement (don't repeat previous ones)
 
         **2. Optimization (JSON):**
-        - A more detailed reworded version of this in (${(MODEL_CONFIG.maxOptimalTokenLen*17)/24}) words to meet the prompt's goal
+        - A more detailed reworded version of this in (${(MODEL_CONFIG.maxOptimalTokenLen*17)/24}) words to meet the prompt's goal. Include
+        the tech stack to use as part of the output if you're asked to build a software.
 
         Return EXACTLY:
         {
@@ -38,6 +39,7 @@ const PROMPT_TEMPLATES = {
 
       **2. Optimization (JSON):**
        - A more detailed reworded version of JUST THIS CHUNK to meet the prompt's goal, assume this is the first chunk in the batch and other chunks will follow this one.
+       Include the tech stack to use as part of the output if you're asked to build a software.
 
       Return EXACTLY:
       {
@@ -58,6 +60,7 @@ const PROMPT_TEMPLATES = {
 
       **2. Optimization (JSON):**
        - A more detailed reworded version of JUST THIS CHUNK to meet the prompt's goal, assume this is the last chunk needed. So end it strong.
+       Include the tech stack to use as part of the output if you're asked to build a software.
 
       Return EXACTLY:
       {
@@ -78,6 +81,7 @@ const PROMPT_TEMPLATES = {
 
         **2. Optimization (JSON):**
         - A more detailed reworded version of JUST THIS CHUNK to meet the prompt's goal, assume this chunk is building off the previous chunk and will have content following afterwards.
+        Include the tech stack to use as part of the output if you're asked to build a software.
 
         Return EXACTLY:
         {
