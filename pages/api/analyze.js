@@ -2,11 +2,11 @@ import { OpenAI } from 'openai';
 
 // Configuration Constants
 const MODEL_CONFIG = {
-  model: "gpt-4o",
-  temperature: 0.4,
-  max_tokens: 128000,
+  model: "gpt-5-mini",
+  temperature: 0.7,
+  max_tokens: 400000,
   optimalTokenLen: 4820,
-  maxOptimalTokenLen: 9820,
+  maxOptimalTokenLen: 15424,
 };
 
 const PROMPT_TEMPLATES = {
@@ -146,7 +146,7 @@ try {
     // OpenAI call
     const openai = new OpenAI({apiKey: process.env.API_KEY});
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       messages: [
         { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON." },
         { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
