@@ -17,7 +17,7 @@ const PROMPT_TEMPLATES = {
         - 3 NEW suggestions for improvement (don't repeat previous ones)
 
         **2. Optimization (JSON):**
-        - A more detailed reworded version of this in (${(MODEL_CONFIG.maxOptimalTokenLen*17)/24}) words to meet the prompt's goal. Include
+        - A more detailed reworded version of this in (${(MODEL_CONFIG.optimalTokenLen*17)/24}) words to meet the prompt's goal. Include
         the tech stack to use as part of the output if you're asked to build a software.
 
         Return EXACTLY:
@@ -151,7 +151,6 @@ try {
         { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON." },
         { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
       ],
-      max_completion_tokens: MODEL_CONFIG.maxOptimalTokenLen,
       response_format: { type: "json_object" }
     });
   
