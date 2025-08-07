@@ -148,7 +148,7 @@ try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [
-        { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON." },
+        { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON. NO BLOCKQUOTES IN YOUR RESPONSE." },
         { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
       ],
       response_format: { type: "json_object" }
