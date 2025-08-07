@@ -14,11 +14,11 @@ const PROMPT_TEMPLATES = {
 
         **1. Evaluation (JSON):**
         - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
-        - 3 NEW suggestions for improvement (don't repeat previous ones)
+        - 3 NEW suggestions for improvement (don't repeat previous ones, NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
         **2. Optimization (JSON):**
         - A more detailed reworded version of this in (${(MODEL_CONFIG.optimalTokenLen*17)/24}) words to meet the prompt's goal. Include
-        the tech stack to use as part of the output if you're asked to build a software.
+        the tech stack to use as part of the output if you're asked to build a software. (NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
         Return EXACTLY:
         {
@@ -35,11 +35,11 @@ const PROMPT_TEMPLATES = {
 
       **1. Evaluation (JSON):**
        - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
-       - 3 NEW suggestions for improvement (don't repeat previous ones)
+       - 3 NEW suggestions for improvement (don't repeat previous ones, NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
       **2. Optimization (JSON):**
        - A more detailed reworded version of JUST THIS CHUNK to meet the prompt's goal, assume this is the first chunk in the batch and other chunks will follow this one.
-       Include the tech stack to use as part of the output if you're asked to build a software.
+       Include the tech stack to use as part of the output if you're asked to build a software. (NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
       Return EXACTLY:
       {
@@ -56,11 +56,11 @@ const PROMPT_TEMPLATES = {
 
       **1. Evaluation (JSON):**
        - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
-       - 3 NEW suggestions for improvement (don't repeat previous ones)
+       - 3 NEW suggestions for improvement (don't repeat previous ones, NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
       **2. Optimization (JSON):**
        - A more detailed reworded version of JUST THIS CHUNK to meet the prompt's goal, assume this is the last chunk needed. So end it strong.
-       Include the tech stack to use as part of the output if you're asked to build a software.
+       Include the tech stack to use as part of the output if you're asked to build a software. (NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
       Return EXACTLY:
       {
@@ -77,11 +77,11 @@ const PROMPT_TEMPLATES = {
 
         **1. Evaluation (JSON):**
         - Accuracy contribution (0-100%) based on this chunk's Clarity (40%), Specificity (30%), Relevance (30%)
-        - 3 NEW suggestions for improvement (don't repeat previous ones)
+        - 3 NEW suggestions for improvement (don't repeat previous ones, NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
         **2. Optimization (JSON):**
         - A more detailed reworded version of JUST THIS CHUNK to meet the prompt's goal, assume this chunk is building off the previous chunk and will have content following afterwards.
-        Include the tech stack to use as part of the output if you're asked to build a software.
+        Include the tech stack to use as part of the output if you're asked to build a software. (NO BLOCKQUOTES ALLOWED IN RESPONSE)
 
         Return EXACTLY:
         {
@@ -148,7 +148,7 @@ try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [
-        { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON. NO BLOCKQUOTES IN YOUR RESPONSE." },
+        { role: "system", content: "You are a prompt analysis engine. Return ONLY valid JSON." },
         { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
       ],
       response_format: { type: "json_object" }
