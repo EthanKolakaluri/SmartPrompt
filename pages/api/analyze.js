@@ -152,7 +152,7 @@ try {
         { role: "user", content: `${prompt}\n\n${isChunked ? 'Chunk Content' : 'Prompt'}: ${content}` }
       ],
       temperature: 0.7,
-      max_tokens: MODEL_CONFIG.maxOptimalTokenLen,
+      max_completion_tokens: MODEL_CONFIG.maxOptimalTokenLen,
       response_format: { type: "json_object" }
     });
   
